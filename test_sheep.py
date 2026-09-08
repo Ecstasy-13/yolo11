@@ -1,6 +1,8 @@
-from ultralytics import YOLO
 import os
+
 import numpy as np  # 新增：用于数组计算
+
+from ultralytics import YOLO
 
 # --------------------------
 # 配置参数（需修改为你的实际路径）
@@ -26,7 +28,7 @@ if __name__ == "__main__":
         iou=0.5,
         project=VAL_SAVE_DIR,
         name="val_run",
-        plots=True
+        plots=True,
     )
 
     # --------------------------
