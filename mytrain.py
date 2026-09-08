@@ -1,6 +1,6 @@
 from ultralytics import YOLO
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     model = YOLO(r"yolo11n.pt")
 
     model.train(
