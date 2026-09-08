@@ -1,8 +1,8 @@
 # YOLOv11 绵羊检测数据集配置
-path: G:/deeplearning/ultralytics-8.3.163/ultralytics-8.3.163/datasets/aerial-sheep-object-detection  # 数据集根路径（已处理分隔符，避免转义）
-train: images/train                  # 训练集图像路径
-val: images/val                      # 验证集图像路径
-test: images/test                    # 测试集图像路径（可选）
+path: G:/deeplearning/ultralytics-8.3.163/ultralytics-8.3.163/datasets/aerial-sheep-object-detection # 数据集根路径（已处理分隔符，避免转义）
+train: images/train # 训练集图像路径
+val: images/val # 验证集图像路径
+test: images/test # 测试集图像路径（可选）
 
-nc: 1                                # 类别数（仅sheep）
-names: ['sheep']                     # 类别名称（与JSON中的category_id=0对应）
+nc: 1 # 类别数（仅sheep）
+names: ["sheep"] # 类别名称（与JSON中的category_id=0对应）
