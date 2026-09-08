@@ -1,0 +1,13 @@
+path: G:/deeplearning/ultralytics-8.3.163/ultralytics-8.3.163/datasets/Aerial_cattle_detection  # 数据集根路径（已处理分隔符，避免转义）
+train: images/train                  # 训练集图像路径
+val: images/val                      # 验证集图像路径
+test: images/test                    # 测试集图像路径（可选）
+nc: 1
+names: ['Cow']
+
+roboflow:
+  workspace: cattle-psyty
+  project: aerial-cattle-detection
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/cattle-psyty/aerial-cattle-detection/dataset/1

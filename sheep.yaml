@@ -1,0 +1,11 @@
+# 方法一：使用绝对路径（推荐，最不容易出错）
+# 注意这里必须是 G:/ 开头，且全用正斜杠 /
+path: G:/deeplearning/ultralytics-8.3.163/ultralytics-8.3.163/datasets/aerial-sheep-object-detection
+
+# train 和 val 写相对于上面 path 的相对目录
+train: images/train  
+val: images/val      # ⚠️请打开你的文件夹确认一下，这里到底叫 val 还是 test？
+
+# 类别
+names:
+  0: sheep  # 假设你的类别名叫 sheep
