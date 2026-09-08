@@ -1,6 +1,8 @@
-from ultralytics import YOLO
 import os
+
 import numpy as np  # 新增：用于处理数组（计算平均值、遍历类别）
+
+from ultralytics import YOLO
 
 # --------------------------
 # 配置参数（保持你的实际路径）
@@ -28,7 +30,7 @@ if __name__ == "__main__":
         iou=0.5,
         project=VAL_SAVE_DIR,
         name="val_run",
-        plots=True
+        plots=True,
     )
 
     # --------------------------
@@ -38,7 +40,7 @@ if __name__ == "__main__":
     class_names = model.names
     # 2. 提取精确率和召回率数组（每个元素对应一个类别的指标）
     class_precisions = val_results.box.p  # 精确率数组（长度=类别数）
-    class_recalls = val_results.box.r     # 召回率数组（长度=类别数）
+    class_recalls = val_results.box.r  # 召回率数组（长度=类别数）
 
     print("\n📊 验证集核心指标：")
     print(f"  - 平均精度（mAP50）：{val_results.box.map50:.3f}（越高越好，目标>0.8）")

@@ -3,4 +3,4 @@ train: train/images
 val: val/images
 test: test/images
 
-names: ['Ambulance', 'Bus', 'Car', 'Motorcycle', 'Truck']
+names: ["Ambulance", "Bus", "Car", "Motorcycle", "Truck"]
