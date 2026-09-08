@@ -1,11 +1,11 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
 """Block modules."""
 
-from typing import List, Optional, Tuple
+from __future__ import annotations
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 from ultralytics.utils.torch_utils import fuse_conv_and_bn
 
@@ -13,43 +13,43 @@ from .conv import Conv, DWConv, GhostConv, LightConv, RepConv, autopad
 from .transformer import TransformerBlock
 
 __all__ = (
-    "DFL",
-    "HGBlock",
-    "HGStem",
-    "SPP",
-    "SPPF",
     "C1",
     "C2",
+    "C2PSA",
     "C3",
-    "C2f",
-    "C2fAttn",
-    "ImagePoolingAttn",
-    "ContrastiveHead",
-    "BNContrastiveHead",
-    "C3x",
     "C3TR",
-    "C3Ghost",
-    "GhostBottleneck",
+    "CIB",
+    "DFL",
+    "ELAN1",
+    "PSA",
+    "SPP",
+    "SPPELAN",
+    "SPPF",
+    "AConv",
+    "ADown",
+    "Attention",
+    "BNContrastiveHead",
     "Bottleneck",
     "BottleneckCSP",
-    "Proto",
-    "RepC3",
-    "ResNetLayer",
-    "RepNCSPELAN4",
-    "ELAN1",
-    "ADown",
-    "AConv",
-    "SPPELAN",
+    "C2f",
+    "C2fAttn",
+    "C2fCIB",
+    "C2fPSA",
+    "C3Ghost",
+    "C3k2",
+    "C3x",
     "CBFuse",
     "CBLinear",
-    "C3k2",
-    "C2fPSA",
-    "C2PSA",
+    "ContrastiveHead",
+    "GhostBottleneck",
+    "HGBlock",
+    "HGStem",
+    "ImagePoolingAttn",
+    "Proto",
+    "RepC3",
+    "RepNCSPELAN4",
     "RepVGGDW",
-    "CIB",
-    "C2fCIB",
-    "Attention",
-    "PSA",
+    "ResNetLayer",
     "SCDown",
     "TorchVision",
 )
@@ -57,23 +57,21 @@ __all__ = (
 
 ###   执行 DFL 积分操作，将概率分布转换为具体的边界框坐标。
 class DFL(nn.Module):
-    """
-    Integral module of Distribution Focal Loss (DFL).
+    """Integral module of Distribution Focal Loss (DFL).
 
     Proposed in Generalized Focal Loss https://ieeexplore.ieee.org/document/9792391
     """
 
     def __init__(self, c1: int = 16):
-        """
-        Initialize a convolutional layer with a given number of input channels.
+        """Initialize a convolutional layer with a given number of input channels.
 
         Args:
             c1 (int): Number of input channels.
         """
         super().__init__()
-        #设置该卷积层不可训练（权重固定）
+        # 设置该卷积层不可训练（权重固定）
         self.conv = nn.Conv2d(c1, 1, 1, bias=False).requires_grad_(False)
-        #生成[0, 1, 2, ..., c1-1]的浮点型张量x（DFL 的 “位置索引”）。
+        # 生成[0, 1, 2, ..., c1-1]的浮点型张量x（DFL 的 “位置索引”）。
         x = torch.arange(c1, dtype=torch.float)
         # 将x reshape 为(1, c1, 1, 1)（符合卷积核形状：输出通道数 × 输入通道数 × 高 × 宽），并赋值给conv的权重
         self.conv.weight.data[:] = nn.Parameter(x.view(1, c1, 1, 1))
@@ -93,10 +91,10 @@ class DFL(nn.Module):
 ##  用于 YOLO 分割模型，生成 “原型掩码”（Proto Mask），后续通过预测系数组合原型掩码得到最终目标掩码。
 class Proto(nn.Module):
     """Ultralytics YOLO models mask Proto module for segmentation models."""
+
     # 输入通道c1、中间通道c_（默认 256）、输出通道c2（原型掩码数量，默认 32）
     def __init__(self, c1: int, c_: int = 256, c2: int = 32):
-        """
-        Initialize the Ultralytics YOLO models mask Proto module with specified number of protos and masks.
+        """Initialize the Ultralytics YOLO models mask Proto module with specified number of protos and masks.
 
         Args:
             c1 (int): Input channels.
@@ -119,16 +117,14 @@ class Proto(nn.Module):
 
 # 网络的 “主干输入模块”（Stem），用于初始下采样和特征提取（源自 PPHGNetV2，提升小目标特征保留能力）。
 class HGStem(nn.Module):
-    """
-    StemBlock of PPHGNetV2 with 5 convolutions and one maxpool2d.
+    """StemBlock of PPHGNetV2 with 5 convolutions and one maxpool2d.
 
     https://github.com/PaddlePaddle/PaddleDetection/blob/develop/ppdet/modeling/backbones/hgnet_v2.py
     """
 
     # 构造函数参数：输入通道c1（如 RGB 图像为 3）、中间通道cm、输出通道c2；调用父类初始化。
     def __init__(self, c1: int, cm: int, c2: int):
-        """
-        Initialize the StemBlock of PPHGNetV2.
+        """Initialize the StemBlock of PPHGNetV2.
 
         Args:
             c1 (int): Input channels.
@@ -156,10 +152,12 @@ class HGStem(nn.Module):
         x = self.stem4(x)
         return x
 
+
 " 初始下采样模块 （Backbone 的 “入口”）"
+
+
 class HGBlock(nn.Module):
-    """
-    HG_Block of PPHGNetV2 with 2 convolutions and LightConv.
+    """HG_Block of PPHGNetV2 with 2 convolutions and LightConv.
 
     https://github.com/PaddlePaddle/PaddleDetection/blob/develop/ppdet/modeling/backbones/hgnet_v2.py
     """
@@ -175,8 +173,7 @@ class HGBlock(nn.Module):
         shortcut: bool = False,
         act: nn.Module = nn.ReLU(),
     ):
-        """
-        Initialize HGBlock with specified parameters.
+        """Initialize HGBlock with specified parameters.
 
         Args:
             c1 (int): Input channels.
@@ -206,9 +203,8 @@ class HGBlock(nn.Module):
 class SPP(nn.Module):
     """Spatial Pyramid Pooling (SPP) layer https://arxiv.org/abs/1406.4729."""
 
-    def __init__(self, c1: int, c2: int, k: Tuple[int, ...] = (5, 9, 13)):
-        """
-        Initialize the SPP layer with input/output channels and pooling kernel sizes.
+    def __init__(self, c1: int, c2: int, k: tuple[int, ...] = (5, 9, 13)):
+        """Initialize the SPP layer with input/output channels and pooling kernel sizes.
 
         Args:
             c1 (int): Input channels.
@@ -231,8 +227,7 @@ class SPPF(nn.Module):
     """Spatial Pyramid Pooling - Fast (SPPF) layer for YOLOv5 by Glenn Jocher."""
 
     def __init__(self, c1: int, c2: int, k: int = 5):
-        """
-        Initialize the SPPF layer with given input/output channels and kernel size.
+        """Initialize the SPPF layer with given input/output channels and kernel size.
 
         Args:
             c1 (int): Input channels.
@@ -259,8 +254,7 @@ class C1(nn.Module):
     """CSP Bottleneck with 1 convolution."""
 
     def __init__(self, c1: int, c2: int, n: int = 1):
-        """
-        Initialize the CSP Bottleneck with 1 convolution.
+        """Initialize the CSP Bottleneck with 1 convolution.
 
         Args:
             c1 (int): Input channels.
@@ -281,8 +275,7 @@ class C2(nn.Module):
     """CSP Bottleneck with 2 convolutions."""
 
     def __init__(self, c1: int, c2: int, n: int = 1, shortcut: bool = True, g: int = 1, e: float = 0.5):
-        """
-        Initialize a CSP Bottleneck with 2 convolutions.
+        """Initialize a CSP Bottleneck with 2 convolutions.
 
         Args:
             c1 (int): Input channels.
@@ -307,6 +300,7 @@ class C2(nn.Module):
 
 class C2f(nn.Module):
     """Faster Implementation of CSP Bottleneck with 2 convolutions."""
+
     # c1：输入特征图的通道数；
     # c2：输出特征图的通道数；
     # n：内部Bottleneck模块的数量（决定特征提取能力，n 越大能力越强但计算量越大）；
@@ -314,8 +308,7 @@ class C2f(nn.Module):
     # g：卷积的分组数（用于分组卷积，默认 1 为普通卷积）；
     # e：扩展率（控制隐藏通道数，默认 0.5 表示隐藏通道为输出通道的一半）。
     def __init__(self, c1: int, c2: int, n: int = 1, shortcut: bool = False, g: int = 1, e: float = 0.5):
-        """
-        Initialize a CSP bottleneck with 2 convolutions.
+        """Initialize a CSP bottleneck with 2 convolutions.
 
         Args:
             c1 (int): Input channels.
@@ -352,8 +345,7 @@ class C3(nn.Module):
     """CSP Bottleneck with 3 convolutions."""
 
     def __init__(self, c1: int, c2: int, n: int = 1, shortcut: bool = True, g: int = 1, e: float = 0.5):
-        """
-        Initialize the CSP Bottleneck with 3 convolutions.
+        """Initialize the CSP Bottleneck with 3 convolutions.
 
         Args:
             c1 (int): Input channels.
@@ -379,8 +371,7 @@ class C3x(C3):
     """C3 module with cross-convolutions."""
 
     def __init__(self, c1: int, c2: int, n: int = 1, shortcut: bool = True, g: int = 1, e: float = 0.5):
-        """
-        Initialize C3 module with cross-convolutions.
+        """Initialize C3 module with cross-convolutions.
 
         Args:
             c1 (int): Input channels.
@@ -399,8 +390,7 @@ class RepC3(nn.Module):
     """Rep C3."""
 
     def __init__(self, c1: int, c2: int, n: int = 3, e: float = 1.0):
-        """
-        Initialize CSP Bottleneck with a single convolution.
+        """Initialize CSP Bottleneck with a single convolution.
 
         Args:
             c1 (int): Input channels.
@@ -424,8 +414,7 @@ class C3TR(C3):
     """C3 module with TransformerBlock()."""
 
     def __init__(self, c1: int, c2: int, n: int = 1, shortcut: bool = True, g: int = 1, e: float = 0.5):
-        """
-        Initialize C3 module with TransformerBlock.
+        """Initialize C3 module with TransformerBlock.
 
         Args:
             c1 (int): Input channels.
@@ -444,8 +433,7 @@ class C3Ghost(C3):
     """C3 module with GhostBottleneck()."""
 
     def __init__(self, c1: int, c2: int, n: int = 1, shortcut: bool = True, g: int = 1, e: float = 0.5):
-        """
-        Initialize C3 module with GhostBottleneck.
+        """Initialize C3 module with GhostBottleneck.
 
         Args:
             c1 (int): Input channels.
@@ -464,8 +452,7 @@ class GhostBottleneck(nn.Module):
     """Ghost Bottleneck https://github.com/huawei-noah/Efficient-AI-Backbones."""
 
     def __init__(self, c1: int, c2: int, k: int = 3, s: int = 1):
-        """
-        Initialize Ghost Bottleneck module.
+        """Initialize Ghost Bottleneck module.
 
         Args:
             c1 (int): Input channels.
@@ -488,15 +475,17 @@ class GhostBottleneck(nn.Module):
         """Apply skip connection and concatenation to input tensor."""
         return self.conv(x) + self.shortcut(x)
 
+
 "最基础的特征提取单元"
+
+
 class Bottleneck(nn.Module):
     """Standard bottleneck."""
 
     def __init__(
-        self, c1: int, c2: int, shortcut: bool = True, g: int = 1, k: Tuple[int, int] = (3, 3), e: float = 0.5
+        self, c1: int, c2: int, shortcut: bool = True, g: int = 1, k: tuple[int, int] = (3, 3), e: float = 0.5
     ):
-        """
-        Initialize a standard bottleneck module.
+        """Initialize a standard bottleneck module.
 
         Args:
             c1 (int): Input channels.
@@ -522,8 +511,7 @@ class BottleneckCSP(nn.Module):
     """CSP Bottleneck https://github.com/WongKinYiu/CrossStagePartialNetworks."""
 
     def __init__(self, c1: int, c2: int, n: int = 1, shortcut: bool = True, g: int = 1, e: float = 0.5):
-        """
-        Initialize CSP Bottleneck.
+        """Initialize CSP Bottleneck.
 
         Args:
             c1 (int): Input channels.
@@ -554,8 +542,7 @@ class ResNetBlock(nn.Module):
     """ResNet block with standard convolution layers."""
 
     def __init__(self, c1: int, c2: int, s: int = 1, e: int = 4):
-        """
-        Initialize ResNet block.
+        """Initialize ResNet block.
 
         Args:
             c1 (int): Input channels.
@@ -579,8 +566,7 @@ class ResNetLayer(nn.Module):
     """ResNet layer with multiple ResNet blocks."""
 
     def __init__(self, c1: int, c2: int, s: int = 1, is_first: bool = False, n: int = 1, e: int = 4):
-        """
-        Initialize ResNet layer.
+        """Initialize ResNet layer.
 
         Args:
             c1 (int): Input channels.
@@ -611,8 +597,7 @@ class MaxSigmoidAttnBlock(nn.Module):
     """Max Sigmoid attention block."""
 
     def __init__(self, c1: int, c2: int, nh: int = 1, ec: int = 128, gc: int = 512, scale: bool = False):
-        """
-        Initialize MaxSigmoidAttnBlock.
+        """Initialize MaxSigmoidAttnBlock.
 
         Args:
             c1 (int): Input channels.
@@ -632,8 +617,7 @@ class MaxSigmoidAttnBlock(nn.Module):
         self.scale = nn.Parameter(torch.ones(1, nh, 1, 1)) if scale else 1.0
 
     def forward(self, x: torch.Tensor, guide: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass of MaxSigmoidAttnBlock.
+        """Forward pass of MaxSigmoidAttnBlock.
 
         Args:
             x (torch.Tensor): Input tensor.
@@ -676,8 +660,7 @@ class C2fAttn(nn.Module):
         g: int = 1,
         e: float = 0.5,
     ):
-        """
-        Initialize C2f module with attention mechanism.
+        """Initialize C2f module with attention mechanism.
 
         Args:
             c1 (int): Input channels.
@@ -698,8 +681,7 @@ class C2fAttn(nn.Module):
         self.attn = MaxSigmoidAttnBlock(self.c, self.c, gc=gc, ec=ec, nh=nh)
 
     def forward(self, x: torch.Tensor, guide: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass through C2f layer with attention.
+        """Forward pass through C2f layer with attention.
 
         Args:
             x (torch.Tensor): Input tensor.
@@ -714,8 +696,7 @@ class C2fAttn(nn.Module):
         return self.cv2(torch.cat(y, 1))
 
     def forward_split(self, x: torch.Tensor, guide: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass using split() instead of chunk().
+        """Forward pass using split() instead of chunk().
 
         Args:
             x (torch.Tensor): Input tensor.
@@ -734,10 +715,9 @@ class ImagePoolingAttn(nn.Module):
     """ImagePoolingAttn: Enhance the text embeddings with image-aware information."""
 
     def __init__(
-        self, ec: int = 256, ch: Tuple[int, ...] = (), ct: int = 512, nh: int = 8, k: int = 3, scale: bool = False
+        self, ec: int = 256, ch: tuple[int, ...] = (), ct: int = 512, nh: int = 8, k: int = 3, scale: bool = False
     ):
-        """
-        Initialize ImagePoolingAttn module.
+        """Initialize ImagePoolingAttn module.
 
         Args:
             ec (int): Embedding channels.
@@ -763,9 +743,8 @@ class ImagePoolingAttn(nn.Module):
         self.hc = ec // nh
         self.k = k
 
-    def forward(self, x: List[torch.Tensor], text: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass of ImagePoolingAttn.
+    def forward(self, x: list[torch.Tensor], text: torch.Tensor) -> torch.Tensor:
+        """Forward pass of ImagePoolingAttn.
 
         Args:
             x (List[torch.Tensor]): List of input feature maps.
@@ -808,8 +787,7 @@ class ContrastiveHead(nn.Module):
         self.logit_scale = nn.Parameter(torch.ones([]) * torch.tensor(1 / 0.07).log())
 
     def forward(self, x: torch.Tensor, w: torch.Tensor) -> torch.Tensor:
-        """
-        Forward function of contrastive learning.
+        """Forward function of contrastive learning.
 
         Args:
             x (torch.Tensor): Image features.
@@ -825,16 +803,14 @@ class ContrastiveHead(nn.Module):
 
 
 class BNContrastiveHead(nn.Module):
-    """
-    Batch Norm Contrastive Head using batch norm instead of l2-normalization.
+    """Batch Norm Contrastive Head using batch norm instead of l2-normalization.
 
     Args:
         embed_dims (int): Embed dimensions of text and image features.
     """
 
     def __init__(self, embed_dims: int):
-        """
-        Initialize BNContrastiveHead.
+        """Initialize BNContrastiveHead.
 
         Args:
             embed_dims (int): Embedding dimensions for features.
@@ -858,8 +834,7 @@ class BNContrastiveHead(nn.Module):
         return x
 
     def forward(self, x: torch.Tensor, w: torch.Tensor) -> torch.Tensor:
-        """
-        Forward function of contrastive learning with batch normalization.
+        """Forward function of contrastive learning with batch normalization.
 
         Args:
             x (torch.Tensor): Image features.
@@ -879,10 +854,9 @@ class RepBottleneck(Bottleneck):
     """Rep bottleneck."""
 
     def __init__(
-        self, c1: int, c2: int, shortcut: bool = True, g: int = 1, k: Tuple[int, int] = (3, 3), e: float = 0.5
+        self, c1: int, c2: int, shortcut: bool = True, g: int = 1, k: tuple[int, int] = (3, 3), e: float = 0.5
     ):
-        """
-        Initialize RepBottleneck.
+        """Initialize RepBottleneck.
 
         Args:
             c1 (int): Input channels.
@@ -901,8 +875,7 @@ class RepCSP(C3):
     """Repeatable Cross Stage Partial Network (RepCSP) module for efficient feature extraction."""
 
     def __init__(self, c1: int, c2: int, n: int = 1, shortcut: bool = True, g: int = 1, e: float = 0.5):
-        """
-        Initialize RepCSP layer.
+        """Initialize RepCSP layer.
 
         Args:
             c1 (int): Input channels.
@@ -921,8 +894,7 @@ class RepNCSPELAN4(nn.Module):
     """CSP-ELAN."""
 
     def __init__(self, c1: int, c2: int, c3: int, c4: int, n: int = 1):
-        """
-        Initialize CSP-ELAN layer.
+        """Initialize CSP-ELAN layer.
 
         Args:
             c1 (int): Input channels.
@@ -955,8 +927,7 @@ class ELAN1(RepNCSPELAN4):
     """ELAN1 module with 4 convolutions."""
 
     def __init__(self, c1: int, c2: int, c3: int, c4: int):
-        """
-        Initialize ELAN1 layer.
+        """Initialize ELAN1 layer.
 
         Args:
             c1 (int): Input channels.
@@ -976,8 +947,7 @@ class AConv(nn.Module):
     """AConv."""
 
     def __init__(self, c1: int, c2: int):
-        """
-        Initialize AConv module.
+        """Initialize AConv module.
 
         Args:
             c1 (int): Input channels.
@@ -996,8 +966,7 @@ class ADown(nn.Module):
     """ADown."""
 
     def __init__(self, c1: int, c2: int):
-        """
-        Initialize ADown module.
+        """Initialize ADown module.
 
         Args:
             c1 (int): Input channels.
@@ -1022,8 +991,7 @@ class SPPELAN(nn.Module):
     """SPP-ELAN."""
 
     def __init__(self, c1: int, c2: int, c3: int, k: int = 5):
-        """
-        Initialize SPP-ELAN block.
+        """Initialize SPP-ELAN block.
 
         Args:
             c1 (int): Input channels.
@@ -1049,9 +1017,8 @@ class SPPELAN(nn.Module):
 class CBLinear(nn.Module):
     """CBLinear."""
 
-    def __init__(self, c1: int, c2s: List[int], k: int = 1, s: int = 1, p: Optional[int] = None, g: int = 1):
-        """
-        Initialize CBLinear module.
+    def __init__(self, c1: int, c2s: list[int], k: int = 1, s: int = 1, p: int | None = None, g: int = 1):
+        """Initialize CBLinear module.
 
         Args:
             c1 (int): Input channels.
@@ -1065,7 +1032,7 @@ class CBLinear(nn.Module):
         self.c2s = c2s
         self.conv = nn.Conv2d(c1, sum(c2s), k, s, autopad(k, p), groups=g, bias=True)
 
-    def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> list[torch.Tensor]:
         """Forward pass through CBLinear layer."""
         return self.conv(x).split(self.c2s, dim=1)
 
@@ -1073,9 +1040,8 @@ class CBLinear(nn.Module):
 class CBFuse(nn.Module):
     """CBFuse."""
 
-    def __init__(self, idx: List[int]):
-        """
-        Initialize CBFuse module.
+    def __init__(self, idx: list[int]):
+        """Initialize CBFuse module.
 
         Args:
             idx (List[int]): Indices for feature selection.
@@ -1083,9 +1049,8 @@ class CBFuse(nn.Module):
         super().__init__()
         self.idx = idx
 
-    def forward(self, xs: List[torch.Tensor]) -> torch.Tensor:
-        """
-        Forward pass through CBFuse layer.
+    def forward(self, xs: list[torch.Tensor]) -> torch.Tensor:
+        """Forward pass through CBFuse layer.
 
         Args:
             xs (List[torch.Tensor]): List of input tensors.
@@ -1102,8 +1067,7 @@ class C3f(nn.Module):
     """Faster Implementation of CSP Bottleneck with 2 convolutions."""
 
     def __init__(self, c1: int, c2: int, n: int = 1, shortcut: bool = False, g: int = 1, e: float = 0.5):
-        """
-        Initialize CSP bottleneck layer with two convolutions.
+        """Initialize CSP bottleneck layer with two convolutions.
 
         Args:
             c1 (int): Input channels.
@@ -1133,8 +1097,7 @@ class C3k2(C2f):
     def __init__(
         self, c1: int, c2: int, n: int = 1, c3k: bool = False, e: float = 0.5, g: int = 1, shortcut: bool = True
     ):
-        """
-        Initialize C3k2 module.
+        """Initialize C3k2 module.
 
         Args:
             c1 (int): Input channels.
@@ -1157,13 +1120,15 @@ class C3k2(C2f):
             C3k(self.c, self.c, 2, shortcut, g) if c3k else Bottleneck(self.c, self.c, shortcut, g) for _ in range(n)
         )
 
+
 " 继承自C3模块（YOLOv5 引入的经典 CSP 结构，由 2 个 1x1 卷积 + 中间多个 Bottleneck 组成）。"
+
+
 class C3k(C3):
     """C3k is a CSP bottleneck module with customizable kernel sizes for feature extraction in neural networks."""
 
     def __init__(self, c1: int, c2: int, n: int = 1, shortcut: bool = True, g: int = 1, e: float = 0.5, k: int = 3):
-        """
-        Initialize C3k module.
+        """Initialize C3k module.
 
         Args:
             c1 (int): Input channels.
@@ -1184,8 +1149,7 @@ class RepVGGDW(torch.nn.Module):
     """RepVGGDW is a class that represents a depth wise separable convolutional block in RepVGG architecture."""
 
     def __init__(self, ed: int) -> None:
-        """
-        Initialize RepVGGDW module.
+        """Initialize RepVGGDW module.
 
         Args:
             ed (int): Input and output channels.
@@ -1197,8 +1161,7 @@ class RepVGGDW(torch.nn.Module):
         self.act = nn.SiLU()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Perform a forward pass of the RepVGGDW block.
+        """Perform a forward pass of the RepVGGDW block.
 
         Args:
             x (torch.Tensor): Input tensor.
@@ -1209,8 +1172,7 @@ class RepVGGDW(torch.nn.Module):
         return self.act(self.conv(x) + self.conv1(x))
 
     def forward_fuse(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Perform a forward pass of the RepVGGDW block without fusing the convolutions.
+        """Perform a forward pass of the RepVGGDW block without fusing the convolutions.
 
         Args:
             x (torch.Tensor): Input tensor.
@@ -1222,8 +1184,7 @@ class RepVGGDW(torch.nn.Module):
 
     @torch.no_grad()
     def fuse(self):
-        """
-        Fuse the convolutional layers in the RepVGGDW block.
+        """Fuse the convolutional layers in the RepVGGDW block.
 
         This method fuses the convolutional layers and updates the weights and biases accordingly.
         """
@@ -1248,8 +1209,7 @@ class RepVGGDW(torch.nn.Module):
 
 
 class CIB(nn.Module):
-    """
-    Conditional Identity Block (CIB) module.
+    """Conditional Identity Block (CIB) module.
 
     Args:
         c1 (int): Number of input channels.
@@ -1260,8 +1220,7 @@ class CIB(nn.Module):
     """
 
     def __init__(self, c1: int, c2: int, shortcut: bool = True, e: float = 0.5, lk: bool = False):
-        """
-        Initialize the CIB module.
+        """Initialize the CIB module.
 
         Args:
             c1 (int): Input channels.
@@ -1283,8 +1242,7 @@ class CIB(nn.Module):
         self.add = shortcut and c1 == c2
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass of the CIB module.
+        """Forward pass of the CIB module.
 
         Args:
             x (torch.Tensor): Input tensor.
@@ -1296,8 +1254,7 @@ class CIB(nn.Module):
 
 
 class C2fCIB(C2f):
-    """
-    C2fCIB class represents a convolutional block with C2f and CIB modules.
+    """C2fCIB class represents a convolutional block with C2f and CIB modules.
 
     Args:
         c1 (int): Number of input channels.
@@ -1312,8 +1269,7 @@ class C2fCIB(C2f):
     def __init__(
         self, c1: int, c2: int, n: int = 1, shortcut: bool = False, lk: bool = False, g: int = 1, e: float = 0.5
     ):
-        """
-        Initialize C2fCIB module.
+        """Initialize C2fCIB module.
 
         Args:
             c1 (int): Input channels.
@@ -1329,8 +1285,7 @@ class C2fCIB(C2f):
 
 
 class Attention(nn.Module):
-    """
-    Attention module that performs self-attention on the input tensor.
+    """Attention module that performs self-attention on the input tensor.
 
     Args:
         dim (int): The input tensor dimension.
@@ -1348,8 +1303,7 @@ class Attention(nn.Module):
     """
 
     def __init__(self, dim: int, num_heads: int = 8, attn_ratio: float = 0.5):
-        """
-        Initialize multi-head attention module.
+        """Initialize multi-head attention module.
 
         Args:
             dim (int): Input dimension.
@@ -1368,8 +1322,7 @@ class Attention(nn.Module):
         self.pe = Conv(dim, dim, 3, 1, g=dim, act=False)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass of the Attention module.
+        """Forward pass of the Attention module.
 
         Args:
             x (torch.Tensor): The input tensor.
@@ -1392,8 +1345,7 @@ class Attention(nn.Module):
 
 
 class PSABlock(nn.Module):
-    """
-    PSABlock class implementing a Position-Sensitive Attention block for neural networks.
+    """PSABlock class implementing a Position-Sensitive Attention block for neural networks.
 
     This class encapsulates the functionality for applying multi-head attention and feed-forward neural network layers
     with optional shortcut connections.
@@ -1414,8 +1366,7 @@ class PSABlock(nn.Module):
     """
 
     def __init__(self, c: int, attn_ratio: float = 0.5, num_heads: int = 4, shortcut: bool = True) -> None:
-        """
-        Initialize the PSABlock.
+        """Initialize the PSABlock.
 
         Args:
             c (int): Input and output channels.
@@ -1430,8 +1381,7 @@ class PSABlock(nn.Module):
         self.add = shortcut
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Execute a forward pass through PSABlock.
+        """Execute a forward pass through PSABlock.
 
         Args:
             x (torch.Tensor): Input tensor.
@@ -1445,8 +1395,7 @@ class PSABlock(nn.Module):
 
 
 class PSA(nn.Module):
-    """
-    PSA class for implementing Position-Sensitive Attention in neural networks.
+    """PSA class for implementing Position-Sensitive Attention in neural networks.
 
     This class encapsulates the functionality for applying position-sensitive attention and feed-forward networks to
     input tensors, enhancing feature extraction and processing capabilities.
@@ -1469,8 +1418,7 @@ class PSA(nn.Module):
     """
 
     def __init__(self, c1: int, c2: int, e: float = 0.5):
-        """
-        Initialize PSA module.
+        """Initialize PSA module.
 
         Args:
             c1 (int): Input channels.
@@ -1487,8 +1435,7 @@ class PSA(nn.Module):
         self.ffn = nn.Sequential(Conv(self.c, self.c * 2, 1), Conv(self.c * 2, self.c, 1, act=False))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Execute forward pass in PSA module.
+        """Execute forward pass in PSA module.
 
         Args:
             x (torch.Tensor): Input tensor.
@@ -1503,8 +1450,7 @@ class PSA(nn.Module):
 
 
 class C2PSA(nn.Module):
-    """
-    C2PSA module with attention mechanism for enhanced feature extraction and processing.
+    """C2PSA module with attention mechanism for enhanced feature extraction and processing.
 
     This module implements a convolutional block with attention mechanisms to enhance feature extraction and processing
     capabilities. It includes a series of PSABlock modules for self-attention and feed-forward operations.
@@ -1518,24 +1464,23 @@ class C2PSA(nn.Module):
     Methods:
         forward: Performs a forward pass through the C2PSA module, applying attention and feed-forward operations.
 
-    Notes:
-        This module essentially is the same as PSA module, but refactored to allow stacking more PSABlock modules.
-
     Examples:
         >>> c2psa = C2PSA(c1=256, c2=256, n=3, e=0.5)
         >>> input_tensor = torch.randn(1, 256, 64, 64)
         >>> output_tensor = c2psa(input_tensor)
+
+    Notes:
+        This module essentially is the same as PSA module, but refactored to allow stacking more PSABlock modules.
     """
 
     def __init__(self, c1: int, c2: int, n: int = 1, e: float = 0.5):
-        """
-        Initialize C2PSA module.
+        """Initialize C2PSA module.
 
         Args:
             c1 (int): Input channels.
             c2 (int): Output channels.
             n (int): Number of PSABlock modules.
-            e (float): Expansion ratio.  扩展率
+            e (float): Expansion ratio. 扩展率
         """
         super().__init__()
         " 断言输入通道数c1必须等于输出通道数c2，说明该模块不改变特征图的通道数，仅做特征增强。"
@@ -1557,8 +1502,7 @@ class C2PSA(nn.Module):
         self.m = nn.Sequential(*(PSABlock(self.c, attn_ratio=0.5, num_heads=self.c // 64) for _ in range(n)))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Process the input tensor through a series of PSA blocks.
+        """Process the input tensor through a series of PSA blocks.
 
         Args:
             x (torch.Tensor): Input tensor.
@@ -1586,10 +1530,10 @@ class C2PSA(nn.Module):
 
 
 class C2fPSA(C2f):
-    """
-    C2fPSA module with enhanced feature extraction using PSA blocks.
+    """C2fPSA module with enhanced feature extraction using PSA blocks.
 
-    This class extends the C2f module by incorporating PSA blocks for improved attention mechanisms and feature extraction.
+    This class extends the C2f module by incorporating PSA blocks for improved attention mechanisms and feature
+    extraction.
 
     Attributes:
         c (int): Number of hidden channels.
@@ -1611,8 +1555,7 @@ class C2fPSA(C2f):
     """
 
     def __init__(self, c1: int, c2: int, n: int = 1, e: float = 0.5):
-        """
-        Initialize C2fPSA module.
+        """Initialize C2fPSA module.
 
         Args:
             c1 (int): Input channels.
@@ -1626,8 +1569,7 @@ class C2fPSA(C2f):
 
 
 class SCDown(nn.Module):
-    """
-    SCDown module for downsampling with separable convolutions.
+    """SCDown module for downsampling with separable convolutions.
 
     This module performs downsampling using a combination of pointwise and depthwise convolutions, which helps in
     efficiently reducing the spatial dimensions of the input tensor while maintaining the channel information.
@@ -1650,8 +1592,7 @@ class SCDown(nn.Module):
     """
 
     def __init__(self, c1: int, c2: int, k: int, s: int):
-        """
-        Initialize SCDown module.
+        """Initialize SCDown module.
 
         Args:
             c1 (int): Input channels.
@@ -1664,8 +1605,7 @@ class SCDown(nn.Module):
         self.cv2 = Conv(c2, c2, k=k, s=s, g=c2, act=False)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Apply convolution and downsampling to the input tensor.
+        """Apply convolution and downsampling to the input tensor.
 
         Args:
             x (torch.Tensor): Input tensor.
@@ -1677,27 +1617,27 @@ class SCDown(nn.Module):
 
 
 class TorchVision(nn.Module):
-    """
-    TorchVision module to allow loading any torchvision model.
+    """TorchVision module to allow loading any torchvision model.
 
-    This class provides a way to load a model from the torchvision library, optionally load pre-trained weights, and customize the model by truncating or unwrapping layers.
-
-    Attributes:
-        m (nn.Module): The loaded torchvision model, possibly truncated and unwrapped.
+    This class provides a way to load a model from the torchvision library, optionally load pre-trained weights, and
+    customize the model by truncating or unwrapping layers.
 
     Args:
         model (str): Name of the torchvision model to load.
         weights (str, optional): Pre-trained weights to load. Default is "DEFAULT".
-        unwrap (bool, optional): If True, unwraps the model to a sequential containing all but the last `truncate` layers. Default is True.
+        unwrap (bool, optional): If True, unwraps the model to a sequential containing all but the last `truncate`
+            layers. Default is True.
         truncate (int, optional): Number of layers to truncate from the end if `unwrap` is True. Default is 2.
         split (bool, optional): Returns output from intermediate child modules as list. Default is False.
+
+    Attributes:
+        m (nn.Module): The loaded torchvision model, possibly truncated and unwrapped.
     """
 
     def __init__(
         self, model: str, weights: str = "DEFAULT", unwrap: bool = True, truncate: int = 2, split: bool = False
     ):
-        """
-        Load the model and weights from torchvision.
+        """Load the model and weights from torchvision.
 
         Args:
             model (str): Name of the torchvision model to load.
@@ -1724,8 +1664,7 @@ class TorchVision(nn.Module):
             self.m.head = self.m.heads = nn.Identity()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass through the model.
+        """Forward pass through the model.
 
         Args:
             x (torch.Tensor): Input tensor.
@@ -1742,8 +1681,7 @@ class TorchVision(nn.Module):
 
 
 class AAttn(nn.Module):
-    """
-    Area-attention module for YOLO models, providing efficient attention mechanisms.
+    """Area-attention module for YOLO models, providing efficient attention mechanisms.
 
     This module implements an area-based attention mechanism that processes input features in a spatially-aware manner,
     making it particularly effective for object detection tasks.
@@ -1768,8 +1706,7 @@ class AAttn(nn.Module):
     """
 
     def __init__(self, dim: int, num_heads: int, area: int = 1):
-        """
-        Initialize an Area-attention module for YOLO models.
+        """Initialize an Area-attention module for YOLO models.
 
         Args:
             dim (int): Number of hidden channels.
@@ -1788,8 +1725,7 @@ class AAttn(nn.Module):
         self.pe = Conv(all_head_dim, dim, 7, 1, 3, g=dim, act=False)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Process the input tensor through the area-attention.
+        """Process the input tensor through the area-attention.
 
         Args:
             x (torch.Tensor): Input tensor.
@@ -1828,8 +1764,7 @@ class AAttn(nn.Module):
 
 
 class ABlock(nn.Module):
-    """
-    Area-attention block module for efficient feature extraction in YOLO models.
+    """Area-attention block module for efficient feature extraction in YOLO models.
 
     This module implements an area-attention mechanism combined with a feed-forward network for processing feature maps.
     It uses a novel area-based attention approach that is more efficient than traditional self-attention while
@@ -1852,8 +1787,7 @@ class ABlock(nn.Module):
     """
 
     def __init__(self, dim: int, num_heads: int, mlp_ratio: float = 1.2, area: int = 1):
-        """
-        Initialize an Area-attention block module.
+        """Initialize an Area-attention block module.
 
         Args:
             dim (int): Number of input channels.
@@ -1870,8 +1804,7 @@ class ABlock(nn.Module):
         self.apply(self._init_weights)
 
     def _init_weights(self, m: nn.Module):
-        """
-        Initialize weights using a truncated normal distribution.
+        """Initialize weights using a truncated normal distribution.
 
         Args:
             m (nn.Module): Module to initialize.
@@ -1882,8 +1815,7 @@ class ABlock(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass through ABlock.
+        """Forward pass through ABlock.
 
         Args:
             x (torch.Tensor): Input tensor.
@@ -1896,8 +1828,7 @@ class ABlock(nn.Module):
 
 
 class A2C2f(nn.Module):
-    """
-    Area-Attention C2f module for enhanced feature extraction with area-based attention mechanisms.
+    """Area-Attention C2f module for enhanced feature extraction with area-based attention mechanisms.
 
     This module extends the C2f architecture by incorporating area-attention and ABlock layers for improved feature
     processing. It supports both area-attention and standard convolution modes.
@@ -1932,8 +1863,7 @@ class A2C2f(nn.Module):
         g: int = 1,
         shortcut: bool = True,
     ):
-        """
-        Initialize Area-Attention C2f module.
+        """Initialize Area-Attention C2f module.
 
         Args:
             c1 (int): Number of input channels.
@@ -1963,8 +1893,7 @@ class A2C2f(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass through A2C2f layer.
+        """Forward pass through A2C2f layer.
 
         Args:
             x (torch.Tensor): Input tensor.
@@ -1984,8 +1913,7 @@ class SwiGLUFFN(nn.Module):
     """SwiGLU Feed-Forward Network for transformer-based architectures."""
 
     def __init__(self, gc: int, ec: int, e: int = 4) -> None:
-        """
-        Initialize SwiGLU FFN with input dimension, output dimension, and expansion factor.
+        """Initialize SwiGLU FFN with input dimension, output dimension, and expansion factor.
 
         Args:
             gc (int): Guide channels.
@@ -2008,8 +1936,7 @@ class Residual(nn.Module):
     """Residual connection wrapper for neural network modules."""
 
     def __init__(self, m: nn.Module) -> None:
-        """
-        Initialize residual module with the wrapped module.
+        """Initialize residual module with the wrapped module.
 
         Args:
             m (nn.Module): Module to wrap with residual connection.
@@ -2029,9 +1956,8 @@ class Residual(nn.Module):
 class SAVPE(nn.Module):
     """Spatial-Aware Visual Prompt Embedding module for feature enhancement."""
 
-    def __init__(self, ch: List[int], c3: int, embed: int):
-        """
-        Initialize SAVPE module with channels, intermediate channels, and embedding dimension.
+    def __init__(self, ch: list[int], c3: int, embed: int):
+        """Initialize SAVPE module with channels, intermediate channels, and embedding dimension.
 
         Args:
             ch (List[int]): List of input channel dimensions.
@@ -2057,7 +1983,7 @@ class SAVPE(nn.Module):
         self.cv5 = nn.Conv2d(1, self.c, 3, padding=1)
         self.cv6 = nn.Sequential(Conv(2 * self.c, self.c, 3), nn.Conv2d(self.c, self.c, 3, padding=1))
 
-    def forward(self, x: List[torch.Tensor], vp: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: list[torch.Tensor], vp: torch.Tensor) -> torch.Tensor:
         """Process input features and visual prompts to generate enhanced embeddings."""
         y = [self.cv2[i](xi) for i, xi in enumerate(x)]
         y = self.cv4(torch.cat(y, dim=1))
@@ -2089,9 +2015,7 @@ class SAVPE(nn.Module):
 
 
 class MSGA(nn.Module):
-    """
-    Multi-Scale Gated Attention
-    多尺度门控特征增强模块
+    """Multi-Scale Gated Attention 多尺度门控特征增强模块.
     """
 
     def __init__(self, c1, c2=None, reduction=4):
@@ -2103,124 +2027,61 @@ class MSGA(nn.Module):
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
 
         self.channel_att = nn.Sequential(
-            nn.Conv2d(
-                c1, hidden,
-                kernel_size=1,
-                bias=False
-            ),
+            nn.Conv2d(c1, hidden, kernel_size=1, bias=False),
             nn.ReLU(inplace=True),
-            nn.Conv2d(
-                hidden, c1,
-                kernel_size=1,
-                bias=False
-            ),
-            nn.Sigmoid()
+            nn.Conv2d(hidden, c1, kernel_size=1, bias=False),
+            nn.Sigmoid(),
         )
 
         # ===== 2. Multi-scale Spatial Attention =====
-        self.dw3 = nn.Conv2d(
-            c1, c1,
-            kernel_size=3,
-            padding=1,
-            groups=c1,
-            bias=False
-        )
+        self.dw3 = nn.Conv2d(c1, c1, kernel_size=3, padding=1, groups=c1, bias=False)
 
-        self.dw5 = nn.Conv2d(
-            c1, c1,
-            kernel_size=5,
-            padding=2,
-            groups=c1,
-            bias=False
-        )
+        self.dw5 = nn.Conv2d(c1, c1, kernel_size=5, padding=2, groups=c1, bias=False)
 
-        self.dw7 = nn.Conv2d(
-            c1, c1,
-            kernel_size=7,
-            padding=3,
-            groups=c1,
-            bias=False
-        )
+        self.dw7 = nn.Conv2d(c1, c1, kernel_size=7, padding=3, groups=c1, bias=False)
 
-        self.spatial_fusion = nn.Conv2d(
-            c1 * 3,
-            c1,
-            kernel_size=1,
-            bias=False
-        )
+        self.spatial_fusion = nn.Conv2d(c1 * 3, c1, kernel_size=1, bias=False)
 
         self.spatial_act = nn.Sigmoid()
 
         # ===== 3. Adaptive Gate =====
         self.gate = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
-
-            nn.Conv2d(
-                c1, hidden,
-                kernel_size=1,
-                bias=False
-            ),
-
+            nn.Conv2d(c1, hidden, kernel_size=1, bias=False),
             nn.ReLU(inplace=True),
-
-            nn.Conv2d(
-                hidden, 2,
-                kernel_size=1,
-                bias=True
-            )
+            nn.Conv2d(hidden, 2, kernel_size=1, bias=True),
         )
 
         # ===== 4. Projection =====
-        self.project = nn.Conv2d(
-            c1,
-            c1,
-            kernel_size=1,
-            bias=False
-        )
+        self.project = nn.Conv2d(c1, c1, kernel_size=1, bias=False)
 
     def forward(self, x):
 
         # Channel Attention
-        channel_weight = self.channel_att(
-            self.avg_pool(x)
-        )
+        channel_weight = self.channel_att(self.avg_pool(x))
 
         # Multi-scale Spatial Attention
         s3 = self.dw3(x)
         s5 = self.dw5(x)
         s7 = self.dw7(x)
 
-        spatial_features = torch.cat(
-            [s3, s5, s7],
-            dim=1
-        )
+        spatial_features = torch.cat([s3, s5, s7], dim=1)
 
-        spatial_features = self.spatial_fusion(
-            spatial_features
-        )
+        spatial_features = self.spatial_fusion(spatial_features)
 
-        spatial_weight = self.spatial_act(
-            spatial_features
-        )
+        spatial_weight = self.spatial_act(spatial_features)
 
         # Adaptive Gate
         gate = self.gate(x)
 
-        gate = F.softmax(
-            gate,
-            dim=1
-        )
+        gate = F.softmax(gate, dim=1)
 
         channel_gate = gate[:, 0:1]
 
         spatial_gate = gate[:, 1:2]
 
         # Dynamic Fusion
-        attention = (
-            channel_gate * channel_weight
-            +
-            spatial_gate * spatial_weight
-        )
+        attention = channel_gate * channel_weight + spatial_gate * spatial_weight
 
         # Feature Enhancement
         out = x * attention
@@ -2300,7 +2161,7 @@ class MSGA(nn.Module):
 #         filter_weight = self.filter_act(self.filter_bn(self.filter_conv(feat)))
 #         # 将权重乘回原特征，实现伪装目标的特征过滤与增强
 #         return feat * (filter_weight + 0.1)
-    
+
 
 # class IdeNetSimpleBlock(nn.Module):
 #     """
@@ -2316,7 +2177,7 @@ class MSGA(nn.Module):
 #         # 🌟 修改：kernel_size 从 3 改为 7，padding 从 1 改为 3
 #         self.filter_conv = nn.Conv2d(c2, c2, kernel_size=7, stride=1, padding=3, groups=c2, bias=False)
 #         self.filter_bn = nn.BatchNorm2d(c2)
-#         self.filter_act = nn.Sigmoid() 
+#         self.filter_act = nn.Sigmoid()
 
 #     def forward(self, x):
 #         feat = self.act(self.bn1(self.cv1(x)))
@@ -2386,7 +2247,6 @@ class MSGA(nn.Module):
 #         return self.act(out)
 
 
-    
 # class IdeNetIAMBlock(nn.Module):
 #     """
 #     提取自 IdeNet 的 IAM (Information Augmentation Module) 信息增强模块。
@@ -2395,8 +2255,8 @@ class MSGA(nn.Module):
 #     def __init__(self, c1, c2):
 #         super().__init__()
 #         # 为了拼接后输出通道为 c2，我们将通道分为 4 份
-#         c_ = c2 // 4 
-        
+#         c_ = c2 // 4
+
 #         # 分支1：1x1 卷积，保留原始局部信息
 #         self.cv1 = nn.Conv2d(c1, c_, kernel_size=1, stride=1, padding=0, bias=False)
 #         # 分支2：标准 3x3 卷积，感受野 3x3
@@ -2405,8 +2265,8 @@ class MSGA(nn.Module):
 #         self.cv3 = nn.Conv2d(c1, c_, kernel_size=3, stride=1, padding=3, dilation=3, bias=False)
 #         # 分支4：空洞卷积 (dilation=5)，感受野 11x11，捕获大范围全局上下文
 #         # 注意：最后一个分支使用 c2 - c_*3 保证通道数绝对能拼成 c2
-#         self.cv4 = nn.Conv2d(c1, c2 - c_*3, kernel_size=3, stride=1, padding=5, dilation=5, bias=False) 
-        
+#         self.cv4 = nn.Conv2d(c1, c2 - c_*3, kernel_size=3, stride=1, padding=5, dilation=5, bias=False)
+
 #         self.bn = nn.BatchNorm2d(c2)
 #         self.act = nn.SiLU()
 
@@ -2517,16 +2377,16 @@ class MSGA(nn.Module):
 #     """
 #     def __init__(self, c1, c2):
 #         super().__init__()
-#         c_ = c2 // 4 
+#         c_ = c2 // 4
 #         self.cv1 = nn.Conv2d(c1, c_, 1, 1, 0, bias=False)
 #         self.cv2 = nn.Conv2d(c1, c_, 3, 1, 1, dilation=1, bias=False)
 #         self.cv3 = nn.Conv2d(c1, c_, 3, 1, 3, dilation=3, bias=False)
-#         # self.cv4 = nn.Conv2d(c1, c2 - c_*3, 3, 1, 5, dilation=3, bias=False) 
+#         # self.cv4 = nn.Conv2d(c1, c2 - c_*3, 3, 1, 5, dilation=3, bias=False)
 #         self.cv4 = nn.Conv2d(c1, c2 - c_*3,kernel_size=3,stride=1,padding=3,dilation=3)
-        
+
 #         self.bn = nn.BatchNorm2d(c2)
 #         self.act = nn.SiLU()
-        
+
 #         # 🌟 新增：残差对齐边 (如果输入输出通道不同，用 1x1 卷积对齐)
 #         self.shortcut = nn.Conv2d(c1, c2, 1, 1, 0, bias=False) if c1 != c2 else nn.Identity()
 
@@ -2537,7 +2397,7 @@ class MSGA(nn.Module):
 #         x4 = self.cv4(x)
 #         out = torch.cat([x1, x2, x3, x4], dim=1)
 #         out = self.act(self.bn(out))
-        
+
 #         # 🌟 新增：残差相加 (Element-wise Add) 而不是拼接
 #         return out + self.shortcut(x)
 
@@ -2552,15 +2412,15 @@ class MSGA(nn.Module):
 #         super().__init__()
 #         # 强制要求输入必须是 3 通道的 RGB 图片
 #         assert c1 == 3
-        
+
 #         # 色度分支 (Cb, Cr 2个通道) -> 提取颜色特征
 #         self.cv_color = nn.Conv2d(2, c2 // 2, kernel_size=k, stride=s, padding=k//2, bias=False)
 #         # 亮度分支 (Y 1个通道) -> 提取纯粹的纹理和边缘特征
 #         self.cv_luma = nn.Conv2d(1, c2 // 2, kernel_size=k, stride=s, padding=k//2, bias=False)
-        
+
 #         self.bn = nn.BatchNorm2d(c2)
 #         self.act = nn.SiLU()
-        
+
 #         # 动态通道注意力机制 (分配颜色和纹理的权重)
 #         self.attn = nn.Sequential(
 #             nn.AdaptiveAvgPool2d(1),
@@ -2576,15 +2436,15 @@ class MSGA(nn.Module):
 #         Y = 0.299 * R + 0.587 * G + 0.114 * B
 #         Cb = -0.1687 * R - 0.3313 * G + 0.5 * B
 #         Cr = 0.5 * R - 0.4187 * G - 0.0813 * B
-        
+
 #         # 2. 解耦特征提取并下采样
 #         color_feat = self.cv_color(torch.cat([Cb, Cr], dim=1)) # 颜色特征
 #         luma_feat = self.cv_luma(Y)                            # 纹理特征
-        
+
 #         # 3. 拼接与融合
 #         out = torch.cat([color_feat, luma_feat], dim=1)
 #         out = self.act(self.bn(out))
-        
+
 #         # 4. 施加注意力权重，压制错误颜色，凸显真实纹理
 #         return out * self.attn(out)
 
@@ -2596,12 +2456,12 @@ class MSGA(nn.Module):
 #     def __init__(self, c1, c2, k=3, s=2):
 #         super().__init__()
 #         assert c1 == 3, "Input must be 3-channel RGB"
-        
+
 #         self.cv_color = nn.Conv2d(2, c2 // 2, kernel_size=k, stride=s, padding=k//2, bias=False)
 #         self.cv_luma = nn.Conv2d(1, c2 // 2, kernel_size=k, stride=s, padding=k//2, bias=False)
 #         self.bn = nn.BatchNorm2d(c2)
 #         self.act = nn.SiLU()
-        
+
 #         # 1. 原版的通道注意力
 #         self.channel_attn = nn.Sequential(
 #             nn.AdaptiveAvgPool2d(1),
@@ -2610,7 +2470,7 @@ class MSGA(nn.Module):
 #             nn.Conv2d(max(1, c2 // 4), c2, 1, bias=False),
 #             nn.Sigmoid()
 #         )
-        
+
 #         # 🌟 2. 新增：空间注意力 (使用 7x7 大卷积核感受空间纹理)
 #         self.spatial_attn = nn.Sequential(
 #             nn.Conv2d(c2, 1, kernel_size=7, stride=1, padding=3, bias=False),
@@ -2622,11 +2482,11 @@ class MSGA(nn.Module):
 #         Y = 0.299 * R + 0.587 * G + 0.114 * B
 #         Cb = -0.1687 * R - 0.3313 * G + 0.5 * B
 #         Cr = 0.5 * R - 0.4187 * G - 0.0813 * B
-        
+
 #         color_feat = self.cv_color(torch.cat([Cb, Cr], dim=1))
 #         luma_feat = self.cv_luma(Y)
-        
+
 #         out = self.act(self.bn(torch.cat([color_feat, luma_feat], dim=1)))
-        
+
 #         # 🌟 3. 新增：通道权重 * 空间权重，双重提纯！
 #         return out * self.channel_attn(out) * self.spatial_attn(out)
