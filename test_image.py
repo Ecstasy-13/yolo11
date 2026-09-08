@@ -1,5 +1,6 @@
-from ultralytics import YOLO
 import os
+
+from ultralytics import YOLO
 
 # --------------------------
 # 配置参数（需修改为你的实际路径）
@@ -31,7 +32,7 @@ if __name__ == "__main__":
         save=True,
         project=OUTPUT_DIR,
         name="single_image_test",
-        show=False  # 若需要实时显示图片，设为True（需有GUI环境）
+        show=False,  # 若需要实时显示图片，设为True（需有GUI环境）
     )
 
     # --------------------------
