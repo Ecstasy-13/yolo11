@@ -1,5 +1,6 @@
-from ultralytics import YOLO
 import os
+
+from ultralytics import YOLO
 
 # --------------------------
 # 配置参数（需修改为你的实际路径）
@@ -32,7 +33,7 @@ if __name__ == "__main__":
         iou=0.5,  # IOU阈值（用于NMS和评估）
         project=VAL_SAVE_DIR,  # 验证结果保存文件夹
         name="val_run",  # 本次验证名称
-        plots=True  # 生成评估图表（PR曲线、混淆矩阵等）
+        plots=True,  # 生成评估图表（PR曲线、混淆矩阵等）
     )
 
     # --------------------------
